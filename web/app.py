@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 import base64
 import traceback
@@ -32,6 +32,19 @@ class StyleImage(db.Model):
             'created_at': self.created_at.isoformat()
         }
 
+class GeneratedImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_path = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'image_path': self.image_path,
+            'created_at': self.created_at.isoformat()
+        }
+
 def get_user_id():
     """获取基于用户IP的唯一标识"""
     ip = request.remote_addr
@@ -48,8 +61,34 @@ def image_to_base64(image_path):
 
 # def text_to_image(text, style_images, style_texts, width=256, height=256):
 
+# 按照
+def text_to_image(text, width=256, height=256, style_image_path=[], style_text=[]):
+    # 打印接收到的样式图片路径，用于调试
+    print("Style image paths:", style_image_path)
+    print("Style texts:", style_text)
+    
+    # 将样式图片转换为base64
+    base64_style_images = []
+    for path in style_image_path:
+        try:
+            with open(path, 'rb') as f:
+                img_data = base64.b64encode(f.read()).decode()
+                base64_style_images.append(f'data:image/png;base64,{img_data}')
+        except Exception as e:
+            print(f"Error reading image {path}: {str(e)}")
+            continue
+            
+    # 测试：直接返回样式图片的组合
+    if text == '0':
+        if base64_style_images:
+            combined = combine_images(base64_style_images)
+            # 移除 MIME 类型前缀
+            return combined
 
-def text_to_image(text, width=256, height=256, style_images = [], style_texts = []):
+    # base64_style_images 为base64图片列表
+    # style_text 为样式文字列表
+    # TODO: 输入模型处理（如果未调整模型则输入上述list，否则用模型处理图片，返回base64字符串）
+
     if text == '人':
         image_path = "/Users/fanyuxin/Desktop/ShanghiTech/2024_autumn/计算机视觉/Project/ren.jpg"
     elif text == '才':
@@ -95,7 +134,11 @@ def text_to_image(text, width=256, height=256, style_images = [], style_texts = 
     with open(image_path, 'rb') as f:
         return base64.b64encode(f.read()).decode()
 
+# 将多个图片水平拼接，接受base64字符串的列表，返回单个base64字符串
 def combine_images(images):
+
+    #TODO: 应用实际拼接模型
+
     """
     将多个图片水平拼接
     """
@@ -133,6 +176,35 @@ def combine_images(images):
     combined_image.save(img_byte_arr, format='PNG')
     img_byte_arr = img_byte_arr.getvalue()
     return f'data:image/png;base64,{base64.b64encode(img_byte_arr).decode()}'
+
+def artify_image(image_path, text_prompt):
+    # TODO: 应用实际艺术化模型
+    try:
+        # 读取图片
+        img = Image.open(io.BytesIO(base64.b64decode(image_path.split(',')[1])))
+        
+        if text_prompt == "0":
+            # 黑白二值化
+            img = img.convert('L').point(lambda x: 0 if x < 128 else 255, '1')
+        elif text_prompt == "1":
+            # 颜色反转
+            if img.mode == 'RGBA':
+                r, g, b, a = img.split()
+                rgb_image = Image.merge('RGB', (r, g, b))
+                inverted_rgb = ImageOps.invert(rgb_image)
+                r2, g2, b2 = inverted_rgb.split()
+                img = Image.merge('RGBA', (r2, g2, b2, a))
+            else:
+                img = ImageOps.invert(img)
+        
+        # 转换回base64
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return f'data:image/png;base64,{img_str}'
+    except Exception as e:
+        print(f"Error in artify_image: {str(e)}")
+        return None
 
 @app.route('/')
 def index():
@@ -201,8 +273,9 @@ def process():
             
         word_images = []
         for word in words:
-            img_base64 = text_to_image(word, style_images=style_images, style_texts=style_texts)
-            word_images.append(f'data:image/jpeg;base64,{img_base64}')
+            img_base64 = text_to_image(word, style_image_path=style_images, style_text=style_texts)
+            # word_images.append(f'data:image/jpeg;base64,{img_base64}')
+            word_images.append(img_base64)
         
         final_image = combine_images(word_images)
         
@@ -220,8 +293,8 @@ def get_styles():
     try:
         user_id = get_user_id()
         
-        # 从数据库获取用户的所有样式，按创建时间排序
-        styles = StyleImage.query.filter_by(user_id=user_id).order_by(StyleImage.created_at.desc()).all()
+        # 从数据库获取用户的所有样式，按创建时间正序排序
+        styles = StyleImage.query.filter_by(user_id=user_id).order_by(StyleImage.created_at.asc()).all()
         
         result = []
         for i, style in enumerate(styles):
@@ -309,6 +382,90 @@ def save_style():
                 'text': text
             }
         })
+    except Exception as e:
+        print("Error:", str(e))
+        print("Traceback:", traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/save_generated', methods=['POST'])
+def save_generated():
+    try:
+        user_id = get_user_id()
+        data = request.get_json()
+        image_data = data.get('image', '').split(',')[1]  # 移除 MIME 类型前缀
+        
+        # 将 base64 转换为图片并保存
+        filename = f'generated_{user_id}_{datetime.utcnow().strftime("%Y%m%d%H%M%S")}.png'
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        with open(image_path, 'wb') as f:
+            f.write(base64.b64decode(image_data))
+        
+        # 保存到数据库
+        generated = GeneratedImage(
+            image_path=image_path,
+            user_id=user_id
+        )
+        db.session.add(generated)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print("Error:", str(e))
+        print("Traceback:", traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_generated', methods=['GET'])
+def get_generated():
+    try:
+        user_id = get_user_id()
+        
+        # 获取用户生成的所有图片
+        images = GeneratedImage.query.filter_by(user_id=user_id).order_by(GeneratedImage.created_at.desc()).all()
+        
+        result = []
+        for image in images:
+            try:
+                if not os.path.exists(image.image_path):
+                    db.session.delete(image)
+                    continue
+                    
+                with open(image.image_path, 'rb') as f:
+                    img_data = base64.b64encode(f.read()).decode()
+                    
+                result.append({
+                    'id': image.id,
+                    'image': f'data:image/png;base64,{img_data}',
+                    'created_at': image.created_at.isoformat()
+                })
+            except Exception as e:
+                print(f"Error processing image {image.id}: {str(e)}")
+                continue
+                
+        if len(images) != len(result):
+            db.session.commit()
+            
+        return jsonify({'images': result})
+    except Exception as e:
+        print("Error:", str(e))
+        print("Traceback:", traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/artify', methods=['POST'])
+def artify():
+    try:
+        data = request.get_json()
+        image_data = data.get('image')
+        text_prompt = data.get('text_prompt')
+        
+        if not image_data or not text_prompt:
+            return jsonify({'error': '缺少必要参数'}), 400
+            
+        result = artify_image(image_data, text_prompt)
+        if result:
+            return jsonify({'image': result})
+        else:
+            return jsonify({'error': '处理图片失败'}), 500
     except Exception as e:
         print("Error:", str(e))
         print("Traceback:", traceback.format_exc())

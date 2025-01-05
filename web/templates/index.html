@@ -18,13 +18,30 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-content">
             <div class="sidebar-header">
-                <h2>样式图片</h2>
-                <button id="add-pair" class="add-button">
-                    <i class="material-icons">add</i>
-                </button>
+                <div class="tab-buttons">
+                    <button id="styles-tab" class="tab-button active">
+                        <i class="material-icons">style</i>
+                        <span class="button-text">样式图片</span>
+                    </button>
+                    <button id="history-tab" class="tab-button">
+                        <i class="material-icons">history</i>
+                        <span class="button-text">生成历史</span>
+                    </button>
+                </div>
             </div>
-            <div class="image-text-pairs" id="image-text-pairs">
-                <!-- 图片文字对将在这里动态添加 -->
+            <div class="sidebar-scroll">
+                <div id="styles-content" class="tab-content active">
+                    <div class="content-header">
+                        <button id="add-pair" class="action-button">
+                            <i class="material-icons">add</i>
+                            <span class="button-text">添加样式</span>
+                        </button>
+                    </div>
+                    <div id="image-text-pairs"></div>
+                </div>
+                <div id="history-content" class="tab-content">
+                    <div id="generated-images" class="generated-images-container"></div>
+                </div>
             </div>
         </div>
     </div>
