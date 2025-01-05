@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Poppins:wght@400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="theme-background"></div>
+    <div class="sidebar-trigger"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <h2>样式图片</h2>
+                <button id="add-pair" class="add-button">
+                    <i class="material-icons">add</i>
+                </button>
+            </div>
+            <div class="image-text-pairs" id="image-text-pairs">
+                <!-- 图片文字对将在这里动态添加 -->
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="header">
+            <button id="toggle-sidebar" class="toggle-sidebar">
+                <i class="material-icons">menu</i>
+            </button>
+            <h1>Handwriting Generator</h1>
+            <button id="theme-toggle" class="theme-toggle">
+                <i class="material-icons">dark_mode</i>
+            </button>
+        </div>
+        <div class="main-content">
+            <div class="result-preview" id="result-preview">
+                <div class="placeholder-content" id="placeholder-content">
+                    <div class="placeholder-icon">
+                        <i class="material-icons">draw</i>
+                    </div>
+                    <p>添加样式图片并输入文字，让AI为您生成优美的手写文字</p>
+                </div>
+                <div class="word-images-container" id="word-images-container" hidden></div>
+                <div class="final-image-container" id="final-image-container" hidden>
+                    <img id="final-image" src="" alt="">
+                    <div class="dust-particles" id="dust-particles"></div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="text-input-section">
+                    <textarea id="text-input" placeholder="在此输入要转换的文字..."></textarea>
+                </div>
+                <div class="generate-btn-wrapper">
+                    <div class="progress-ring" id="progress-ring"></div>
+                    <button id="generate-btn" class="generate-btn">
+                        <span class="button-text">开始生成</span>
+                        <i class="material-icons">auto_awesome</i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
