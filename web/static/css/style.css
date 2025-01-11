@@ -1269,11 +1269,13 @@ textarea:focus {
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 1001;
     opacity: 0;
     transition: opacity 0.3s ease;
+    padding: 60px 20px;
 }
 
 .preview-modal.active {
@@ -1283,7 +1285,8 @@ textarea:focus {
 .preview-content {
     position: relative;
     max-width: 90%;
-    max-height: 80vh;
+    max-height: calc(80vh - 100px);
+    /* 减小最大高度，为提示词框留出空间 */
     transform: scale(0.95);
     transition: transform 0.3s ease;
 }
@@ -1294,16 +1297,23 @@ textarea:focus {
 
 .preview-content img {
     max-width: 100%;
-    max-height: 80vh;
+    max-height: calc(80vh - 100px);
+    /* 减小最大高度，为提示词框留出空间 */
     object-fit: contain;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-.preview-close {
+.preview-buttons {
     position: absolute;
     top: -40px;
     right: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.preview-close,
+.preview-delete {
     background: none;
     border: none;
     color: white;
@@ -1311,18 +1321,27 @@ textarea:focus {
     padding: 8px;
     font-size: 24px;
     opacity: 0.8;
-    transition: opacity 0.2s ease;
+    transition: all 0.2s ease;
+    border-radius: 50%;
 }
 
-.preview-close:hover {
+.preview-close:hover,
+.preview-delete:hover {
     opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.preview-delete:hover {
+    color: #ff4444;
+    background-color: rgba(255, 68, 68, 0.1);
 }
 
 .artify-panel {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
+    /* 改为相对定位 */
+    bottom: auto;
+    left: auto;
+    transform: none;
     display: flex;
     gap: 10px;
     background: rgba(255, 255, 255, 0.1);
@@ -1333,6 +1352,8 @@ textarea:focus {
     z-index: 1002;
     width: 90%;
     max-width: 500px;
+    margin-top: 20px;
+    /* 添加上边距 */
 }
 
 .artify-input {

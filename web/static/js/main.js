@@ -535,6 +535,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 创建五彩纸屑效果
                 createConfetti();
 
+                // 如果历史标签页是激活状态，立即更新历史记录
+                const historyContent = document.getElementById('history-content');
+                if (historyContent.classList.contains('active')) {
+                    loadGeneratedImages();
+                }
+
                 // 延迟一会儿再隐藏图片，让用户能看到纸屑效果
                 setTimeout(() => {
                     hideGeneratedContent();
@@ -563,6 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (buttonsContainer) {
             buttonsContainer.remove();
         }
+        // 显示文字输入区域
+        document.querySelector('.control-panel').style.display = 'flex';
     }
 
     // 创建五彩纸屑效果
@@ -610,10 +618,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
 
-                // 添加点击事件监听器
+                // 添加点击事件监听器，传递图片ID
                 const imgNode = imgElement.querySelector('img');
                 imgNode.addEventListener('click', () => {
-                    showLargeImage(imgNode.src);
+                    showLargeImage(imgNode.src, image.id);
                 });
 
                 container.appendChild(imgElement);
@@ -624,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 显示大图
-    function showLargeImage(src) {
+    function showLargeImage(src, imageId) {
         // 关闭侧边栏
         sidebar.classList.remove('active');
 
@@ -636,9 +644,14 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.innerHTML = `
             <div class="preview-content">
                 <img src="${src}" alt="${t.previewImage}">
-                <button class="preview-close">
-                    <i class="material-icons">close</i>
-                </button>
+                <div class="preview-buttons">
+                    <button class="preview-close">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <button class="preview-delete">
+                        <i class="material-icons">delete</i>
+                    </button>
+                </div>
             </div>
             <div class="artify-panel">
                 <input type="text" class="artify-input" placeholder="${t.artifyPlaceholder}">
@@ -656,6 +669,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgElement = modal.querySelector('img');
         const artifyInput = modal.querySelector('.artify-input');
         const artifyButton = modal.querySelector('.artify-button');
+        const deleteButton = modal.querySelector('.preview-delete');
+
+        // 处理删除按钮点击事件
+        if (imageId) {
+            deleteButton.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/delete_generated', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: imageId
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('删除失败');
+                    }
+
+                    // 关闭模态框
+                    closePreviewModal(modal);
+                    // 重新加载历史图片列表
+                    loadGeneratedImages();
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('删除失败，请重试');
+                }
+            });
+        } else {
+            // 如果没有imageId（不是历史图片），隐藏删除按钮
+            deleteButton.style.display = 'none';
+        }
 
         // 处理按钮点击事件
         artifyButton.addEventListener('click', async () => {
@@ -831,6 +877,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     finalImage.onload = resolve;
                 }
             });
+
+            // 隐藏文字输入区域
+            document.querySelector('.control-panel').style.display = 'none';
 
             // 显示最终图片和按钮
             finalImage.classList.add('visible');
